@@ -1,0 +1,36 @@
+What is Self-Attention?
+
+Self-Attention is a mechanism that allows a model to focus on different parts of the same input sequence when making predictions.
+
+Instead of processing words one by one like traditional RNNs, self-attention looks at the entire sequence at once and decides:
+
+"Which words are important for understanding this word?"
+
+🧠 Intuition
+
+Consider the sentence:
+
+"The cat sat on the mat because it was tired."
+
+What does "it" refer to?
+
+To understand this, the model must look back at previous words.
+Self-attention helps the model learn that "it" → "cat", not "mat".
+
+It assigns higher importance (attention weight) to relevant words.
+
+⚙️ How Self-Attention Works (Step-by-Step)
+
+For each word in a sentence:
+
+1️⃣ Create Three Vectors
+
+Each word is converted into:
+
+Query (Q) → What am I looking for?
+
+Key (K) → What do I contain?
+
+Value (V) → What information do I give?
+
+These are created using learned weight matrices.
