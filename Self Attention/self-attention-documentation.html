@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Self-Attention: Complete Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e29;
+    --border: #252a38;
+    --accent: #4f9eff;
+    --accent2: #a855f7;
+    --accent3: #10d9a0;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --code-bg: #0a0c10;
+    --highlight: rgba(79,158,255,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.75;
+    overflow-x: hidden;
+  }
+
+  /* Animated starfield background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.15) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.1) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 40%, rgba(255,255,255,0.12) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.08) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 30%, rgba(255,255,255,0.1) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hero {
+    position: relative;
+    padding: 100px 40px 80px;
+    text-align: center;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(79,158,255,0.12) 0%, transparent 70%);
+  }
+
+  .hero-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.2s forwards;
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(42px, 8vw, 80px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.4s forwards;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto 40px;
+    font-style: italic;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.6s forwards;
+  }
+
+  .toc-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.8s forwards;
+  }
+
+  .toc-nav a {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    transition: all 0.2s;
+    background: var(--surface);
+  }
+
+  .toc-nav a:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(79,158,255,0.08);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 40px;
+    position: relative;
+  }
+
+  /* Section styling */
+  .section {
+    padding: 70px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section:last-child { border-bottom: none; }
+
+  .section-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+    margin-bottom: 30px;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 40px 0 16px;
+    padding-left: 16px;
+    border-left: 3px solid var(--accent);
+  }
+
+  h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent3);
+    margin: 28px 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  p { margin-bottom: 18px; color: var(--text); }
+
+  strong { color: #fff; font-weight: 600; }
+
+  em { color: var(--accent); font-style: italic; }
+
+  /* Callout boxes */
+  .callout {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin: 30px 0;
+    position: relative;
+  }
+
+  .callout.info { border-left: 4px solid var(--accent); }
+  .callout.insight { border-left: 4px solid var(--accent2); }
+  .callout.formula { border-left: 4px solid var(--accent3); }
+  .callout.warning { border-left: 4px solid #f59e0b; }
+
+  .callout-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .callout.info .callout-title { color: var(--accent); }
+  .callout.insight .callout-title { color: var(--accent2); }
+  .callout.formula .callout-title { color: var(--accent3); }
+  .callout.warning .callout-title { color: #f59e0b; }
+
+  /* Code blocks */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    overflow-x: auto;
+    margin: 24px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: rgba(79,158,255,0.1);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    color: #cdd6f4;
+  }
+
+  .kw { color: #cba6f7; }
+  .fn { color: #89b4fa; }
+  .str { color: #a6e3a1; }
+  .cm { color: #6c7086; font-style: italic; }
+  .num { color: #fab387; }
+  .op { color: #94e2d5; }
+
+  /* Math formula display */
+  .math-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px 32px;
+    margin: 28px 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: #cdd6f4;
+    letter-spacing: 0.5px;
+  }
+
+  .math-block .big { font-size: 20px; color: var(--accent3); font-weight: 600; }
+  .math-block .label { display: block; font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+  /* Diagram boxes */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 32px 0;
+    overflow-x: auto;
+  }
+
+  .diagram-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  /* Visual attention diagram */
+  .attn-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    row-gap: 16px;
+  }
+
+  .attn-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 100px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .attn-box.input { border-color: #4f9eff44; background: rgba(79,158,255,0.08); color: var(--accent); }
+  .attn-box.matrix { border-color: #a855f744; background: rgba(168,85,247,0.08); color: var(--accent2); }
+  .attn-box.output { border-color: #10d9a044; background: rgba(16,217,160,0.08); color: var(--accent3); }
+  .attn-box.softmax { border-color: #f59e0b44; background: rgba(245,158,11,0.08); color: #f59e0b; }
+
+  .arrow {
+    color: var(--muted);
+    font-size: 20px;
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 28px 0;
+    font-size: 15px;
+  }
+
+  th {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    background: var(--surface);
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  tr:hover td { background: var(--highlight); }
+
+  /* Grid layout */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 28px 0;
+  }
+
+  @media (max-width: 700px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .container { padding: 0 20px; }
+    .hero { padding: 60px 20px 50px; }
+    .attn-flow { flex-direction: column; }
+    .arrow { transform: rotate(90deg); }
+  }
+
+  .card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .card h4 { margin-top: 0; }
+
+  /* Step indicator */
+  .steps {
+    margin: 28px 0;
+    counter-reset: step;
+  }
+
+  .step {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 28px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 2px;
+  }
+
+  .step-content p:last-child { margin-bottom: 0; }
+
+  /* Progress bar visual */
+  .attention-viz {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin: 28px 0;
+  }
+
+  .attn-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .attn-token {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    width: 90px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .attn-bar {
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    transition: width 0.4s ease;
+  }
+
+  /* Sidebar sticky TOC */
+  .page-layout {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 0;
+    max-width: 1140px;
+    margin: 0 auto;
+  }
+
+  .sidebar {
+    padding: 60px 30px 60px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar-toc {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .sidebar ul {
+    list-style: none;
+  }
+
+  .sidebar li { margin-bottom: 4px; }
+
+  .sidebar a {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 5px 0 5px 12px;
+    display: block;
+    border-left: 2px solid transparent;
+    transition: all 0.2s;
+    line-height: 1.4;
+  }
+
+  .sidebar a:hover, .sidebar a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+
+  @media (max-width: 900px) {
+    .page-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+
+  ul, ol {
+    margin: 14px 0 18px 24px;
+  }
+
+  li { margin-bottom: 6px; }
+
+  .badge {
+    display: inline-block;
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .badge.new { background: rgba(16,217,160,0.15); color: var(--accent3); }
+  .badge.key { background: rgba(79,158,255,0.15); color: var(--accent); }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a4155; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <p class="hero-label">Deep Learning · Transformer Architecture</p>
+  <h1>Self-Attention</h1>
+  <p class="hero-sub">Complete A–Z documentation: theory, mathematics, implementation, and applications</p>
+  <nav class="toc-nav">
+    <a href="#intro">Introduction</a>
+    <a href="#intuition">Intuition</a>
+    <a href="#math">Mathematics</a>
+    <a href="#steps">Step-by-Step</a>
+    <a href="#multihead">Multi-Head</a>
+    <a href="#positional">Positional Encoding</a>
+    <a href="#variants">Variants</a>
+    <a href="#complexity">Complexity</a>
+    <a href="#code">Code</a>
+    <a href="#applications">Applications</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+</div>
+
+<!-- LAYOUT -->
+<div class="page-layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-toc">Contents</div>
+  <ul>
+    <li><a href="#intro">1. Introduction</a></li>
+    <li><a href="#intuition">2. Intuition</a></li>
+    <li><a href="#math">3. Mathematics</a></li>
+    <li><a href="#steps">4. Step-by-Step</a></li>
+    <li><a href="#qkv">5. Q, K, V Explained</a></li>
+    <li><a href="#multihead">6. Multi-Head Attention</a></li>
+    <li><a href="#masked">7. Masked Attention</a></li>
+    <li><a href="#positional">8. Positional Encoding</a></li>
+    <li><a href="#variants">9. Variants</a></li>
+    <li><a href="#complexity">10. Complexity</a></li>
+    <li><a href="#code">11. Code</a></li>
+    <li><a href="#transformer">12. In Transformers</a></li>
+    <li><a href="#applications">13. Applications</a></li>
+    <li><a href="#faq">14. FAQ</a></li>
+  </ul>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main style="min-width:0; padding: 0 40px 80px;">
+
+<!-- SECTION 1: INTRODUCTION -->
+<div class="section" id="intro">
+  <div class="container" style="padding:0;">
+    <span class="section-number">01 / Introduction</span>
+    <h2>What is Self-Attention?</h2>
+
+    <p>
+      <strong>Self-attention</strong> (also called <em>intra-attention</em>) is a mechanism that allows each element in a sequence to attend to — and gather information from — every other element in the same sequence. It was introduced in the landmark 2017 paper <strong>"Attention Is All You Need"</strong> by Vaswani et al. and forms the backbone of Transformer models.
+    </p>
+
+    <p>
+      Before self-attention, sequence modeling relied on RNNs and LSTMs which processed tokens one at a time, making it hard to capture long-range dependencies efficiently. Self-attention solves this by computing relationships between all pairs of positions simultaneously, regardless of how far apart they are.
+    </p>
+
+    <div class="callout info">
+      <div class="callout-title">🔑 Core Idea</div>
+      <p style="margin:0;">Given a sequence of tokens, self-attention computes a <strong>weighted sum of all tokens</strong> for each position, where the weights reflect how relevant each token is to the current one. This lets every token "see" and incorporate information from all others in a single step.</p>
+    </div>
+
+    <h3>Why It Matters</h3>
+    <p>Self-attention has several critical advantages:</p>
+    <ul>
+      <li><strong>Parallelization</strong> — unlike RNNs, all positions are processed simultaneously</li>
+      <li><strong>Long-range dependencies</strong> — token at position 1 can directly attend to position 1000 with no degradation</li>
+      <li><strong>Interpretability</strong> — attention weights provide insight into what the model "looks at"</li>
+      <li><strong>Expressiveness</strong> — flexible enough to learn complex relational patterns</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SECTION 2: INTUITION -->
+<div class="section" id="intuition">
+  <div class="container" style="padding:0;">
+    <span class="section-number">02 / Intuition</span>
+    <h2>Building the Intuition</h2>
+
+    <p>Consider the sentence: <em>"The animal didn't cross the street because it was too tired."</em></p>
+    <p>What does "it" refer to? As a human, you immediately know "it" refers to "animal", not "street". This requires understanding context from distant words. Self-attention lets a model do exactly this computation.</p>
+
+    <div class="attention-viz">
+      <div class="diagram-title">Attention from "it" → other tokens (example weights)</div>
+      <div class="attn-row">
+        <div class="attn-token">"The"</div>
+        <div class="attn-bar" style="width:40px; background:rgba(79,158,255,0.2)">0.02</div>
+      </div>
+      <div class="attn-row">
+        <div class="attn-token">"animal"</div>
+        <div class="attn-bar" style="width:220px; background:rgba(79,158,255,0.7)">0.63 ← high!</div>
+      </div>
+      <div class="attn-row">
+        <div class="attn-token">"cross"</div>
+        <div class="attn-bar" style="width:50px; background:rgba(79,158,255,0.2)">0.04</div>
+      </div>
+      <div class="attn-row">
+        <div class="attn-token">"street"</div>
+        <div class="attn-bar" style="width:70px; background:rgba(79,158,255,0.25)">0.08</div>
+      </div>
+      <div class="attn-row">
+        <div class="attn-token">"tired"</div>
+        <div class="attn-bar" style="width:120px; background:rgba(79,158,255,0.45)">0.18</div>
+      </div>
+    </div>
+
+    <h3>The Library Analogy</h3>
+    <p>Think of self-attention like a library lookup system:</p>
+    <div class="grid-2">
+      <div class="card">
+        <h4>📋 Query (Q)</h4>
+        <p>Your search query — what you're looking for. "I want books about space exploration."</p>
+      </div>
+      <div class="card">
+        <h4>🔖 Key (K)</h4>
+        <p>Index cards describing each book. "This book: space, science, rockets."</p>
+      </div>
+      <div class="card">
+        <h4>📚 Value (V)</h4>
+        <p>The actual book content that gets retrieved once you find a match.</p>
+      </div>
+      <div class="card">
+        <h4>⚖️ Score</h4>
+        <p>How well your query matches each key. High score → more of that book's content is retrieved.</p>
+      </div>
+    </div>
+
+    <p>In self-attention, every token simultaneously acts as a query (asking "what do I need?"), a key (advertising "what I contain"), and a value (providing "what I give when chosen").</p>
+  </div>
+</div>
+
+<!-- SECTION 3: MATHEMATICS -->
+<div class="section" id="math">
+  <div class="container" style="padding:0;">
+    <span class="section-number">03 / Mathematics</span>
+    <h2>The Mathematics</h2>
+
+    <h3>Core Formula</h3>
+    <p>The scaled dot-product attention formula is:</p>
+
+    <div class="math-block">
+      <span class="big">Attention(Q, K, V) = softmax( QKᵀ / √d<sub>k</sub> ) · V</span>
+      <span class="label">The fundamental self-attention equation</span>
+    </div>
+
+    <p>Where:</p>
+    <ul>
+      <li><strong>Q ∈ ℝ<sup>n×d<sub>k</sub></sup></strong> — Query matrix (n = sequence length, d<sub>k</sub> = key dimension)</li>
+      <li><strong>K ∈ ℝ<sup>n×d<sub>k</sub></sup></strong> — Key matrix</li>
+      <li><strong>V ∈ ℝ<sup>n×d<sub>v</sub></sup></strong> — Value matrix (d<sub>v</sub> = value dimension)</li>
+      <li><strong>QKᵀ ∈ ℝ<sup>n×n</sup></strong> — Raw attention score matrix (each cell = dot product of query and key)</li>
+      <li><strong>√d<sub>k</sub></strong> — Scaling factor to prevent vanishing gradients in softmax</li>
+      <li><strong>Output ∈ ℝ<sup>n×d<sub>v</sub></sup></strong> — Context-aware representations</li>
+    </ul>
+
+    <div class="callout formula">
+      <div class="callout-title">⚡ Why √dₖ Scaling?</div>
+      <p>For large d<sub>k</sub>, dot products grow large in magnitude, pushing softmax into regions with very small gradients. Dividing by √d<sub>k</sub> keeps the variance of dot products around 1, assuming Q and K have unit-variance components. Without this, training becomes unstable.</p>
+      <p style="margin:0;">Formally: if qᵢ, kⱼ ~ N(0,1), then qᵢ·kⱼ ~ N(0, d<sub>k</sub>), so dividing by √d<sub>k</sub> gives variance = 1.</p>
+    </div>
+
+    <h3>Projection Matrices</h3>
+    <p>In practice, Q, K, V are created by projecting the input embeddings X through learned weight matrices:</p>
+
+    <div class="math-block">
+      Q = X · W<sup>Q</sup>,&nbsp;&nbsp; K = X · W<sup>K</sup>,&nbsp;&nbsp; V = X · W<sup>V</sup>
+      <span class="label">X ∈ ℝ<sup>n×d_model</sup> is the input embedding; W matrices are learned</span>
+    </div>
+
+    <p>Since the same input X produces all three (Q, K, V), this is called <em>self-attention</em> — the sequence attends to itself. In cross-attention (used in encoder-decoder), Q comes from one sequence and K, V from another.</p>
+
+    <h3>Attention Score Matrix</h3>
+    <p>The raw score matrix S = QKᵀ / √d<sub>k</sub> has shape [n × n] — every token's query is compared to every token's key. After softmax row-wise, we get attention weights A where each row sums to 1. The output is then a weighted combination of values.</p>
+
+    <div class="math-block">
+      S<sub>ij</sub> = q<sub>i</sub> · k<sub>j</sub> / √d<sub>k</sub>&nbsp;&nbsp;(raw score: how much token i attends to token j)
+      <br><br>
+      A<sub>ij</sub> = exp(S<sub>ij</sub>) / Σ<sub>k</sub> exp(S<sub>ik</sub>)&nbsp;&nbsp;(softmax along rows)
+      <br><br>
+      output<sub>i</sub> = Σ<sub>j</sub> A<sub>ij</sub> · v<sub>j</sub>&nbsp;&nbsp;(weighted sum of values)
+      <span class="label">Element-wise breakdown of the attention operation</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: STEP BY STEP -->
+<div class="section" id="steps">
+  <div class="container" style="padding:0;">
+    <span class="section-number">04 / Step-by-Step Walkthrough</span>
+    <h2>Self-Attention: Step by Step</h2>
+
+    <p>Let's trace through the full computation for a sequence of 3 tokens: <code>["The", "cat", "sat"]</code></p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Embed the Tokens</h4>
+          <p>Convert each token to a vector using an embedding lookup table. If d_model = 4, we get a matrix X ∈ ℝ<sup>3×4</sup> where each row is a token embedding.</p>
+          <div class="math-block" style="text-align:left; font-size:13px;">
+            X = [[0.1, 0.4, 0.2, 0.9],  ← "The"<br>
+            &nbsp;&nbsp;&nbsp;&nbsp; [0.5, 0.1, 0.8, 0.3],  ← "cat"<br>
+            &nbsp;&nbsp;&nbsp;&nbsp; [0.2, 0.7, 0.4, 0.1]]  ← "sat"
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Compute Q, K, V via Linear Projections</h4>
+          <p>Multiply X by three separate learned weight matrices W<sup>Q</sup>, W<sup>K</sup>, W<sup>V</sup> (each ∈ ℝ<sup>d_model × d_k</sup>).</p>
+          <p>This projects each token into three roles: what it's asking for (Q), what it offers (K), and what it delivers (V).</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Compute Raw Attention Scores</h4>
+          <p>Compute the n×n score matrix: <code>S = Q · Kᵀ</code>. Each entry S<sub>ij</sub> measures alignment between token i's query and token j's key via dot product.</p>
+          <p>Scale by √d<sub>k</sub>: <code>S_scaled = S / √d_k</code></p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Apply Softmax</h4>
+          <p>Apply softmax along each row so scores sum to 1. Now each row of A is a probability distribution: "token i distributes its attention across all positions."</p>
+          <div class="math-block" style="text-align:left; font-size:13px;">
+            A ≈ [[0.5, 0.3, 0.2],  ← "The" attends most to itself<br>
+            &nbsp;&nbsp;&nbsp;&nbsp; [0.1, 0.6, 0.3],  ← "cat" attends strongly to itself<br>
+            &nbsp;&nbsp;&nbsp;&nbsp; [0.2, 0.4, 0.4]]  ← "sat" attends to "cat" and itself
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Compute Weighted Sum of Values</h4>
+          <p>Multiply attention weights A by the value matrix V: <code>Output = A · V</code>.</p>
+          <p>Each output vector is a context-aware blend of all value vectors, weighted by attention. Token "sat" will now have a representation that has partially "absorbed" information from "cat".</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h4>Optional: Output Projection</h4>
+          <p>In multi-head attention, the concatenated outputs are projected once more through W<sup>O</sup> to produce the final output. In single-head attention, the output matrix is used directly.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Architecture Flow -->
+    <div class="diagram">
+      <div class="diagram-title">Self-Attention Data Flow</div>
+      <div class="attn-flow">
+        <div class="attn-box input">Input X<br><small>n × d_model</small></div>
+        <div class="arrow">→</div>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+          <div class="attn-box matrix">Q = X·W<sup>Q</sup><br><small>n × d_k</small></div>
+          <div class="attn-box matrix">K = X·W<sup>K</sup><br><small>n × d_k</small></div>
+          <div class="attn-box matrix">V = X·W<sup>V</sup><br><small>n × d_v</small></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="attn-box softmax">QKᵀ/√d_k<br>Softmax<br><small>n × n</small></div>
+        <div class="arrow">→</div>
+        <div class="attn-box output">Output<br><small>n × d_v</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Q K V -->
+<div class="section" id="qkv">
+  <div class="container" style="padding:0;">
+    <span class="section-number">05 / Queries, Keys & Values</span>
+    <h2>Q, K, V — Deep Dive</h2>
+
+    <p>The Query-Key-Value decomposition is the conceptual heart of attention. Here's what each matrix actually represents:</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <h4>🔍 Query (Q)</h4>
+        <p>The "question" a token is asking about its context. W<sup>Q</sup> is trained to map token embeddings to a representation that captures "what kind of information do I need?"</p>
+        <p>Example: for the word "ate", its query might encode "I need: a subject (who ate?) and an object (what was eaten?)"</p>
+      </div>
+      <div class="card">
+        <h4>🔑 Key (K)</h4>
+        <p>The "answer" that a token broadcasts about its own nature. W<sup>K</sup> maps embeddings to "what kind of information do I provide?"</p>
+        <p>When "dog" has a key that matches "ate"'s query well, "ate" will pay more attention to "dog".</p>
+      </div>
+      <div class="card">
+        <h4>📦 Value (V)</h4>
+        <p>The actual content transferred. While keys determine <em>how much</em> to attend, values determine <em>what information</em> flows.</p>
+        <p>Values can encode different aspects than keys — a token might have a "noun" key but a value that encodes rich semantic content.</p>
+      </div>
+      <div class="card">
+        <h4>⚙️ Learned Separately</h4>
+        <p>The three weight matrices W<sup>Q</sup>, W<sup>K</sup>, W<sup>V</sup> are entirely <strong>independent</strong> and learned from scratch via backpropagation.</p>
+        <p>This gives the model flexibility: it can learn separate "languages" for what to seek vs. what to offer.</p>
+      </div>
+    </div>
+
+    <div class="callout insight">
+      <div class="callout-title">💡 Key Insight: Why Separate Q and K?</div>
+      <p>Why not just compute dot products between token embeddings directly? Because raw embeddings are general-purpose, while Q and K can specialize. W<sup>Q</sup> and W<sup>K</sup> can learn that "verbs should attend to nouns" without polluting the raw embedding space. The separation also allows asymmetric attention: i attending to j doesn't require j to attend equally to i.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 6: MULTI-HEAD -->
+<div class="section" id="multihead">
+  <div class="container" style="padding:0;">
+    <span class="section-number">06 / Multi-Head Attention</span>
+    <h2>Multi-Head Attention</h2>
+
+    <p>A single attention head can only capture one "type" of relationship between tokens. <strong>Multi-head attention</strong> runs h parallel attention heads, each with its own Q, K, V projections, allowing the model to jointly attend to information from different representation subspaces.</p>
+
+    <div class="math-block">
+      MultiHead(Q, K, V) = Concat(head₁, ..., headₕ) · W<sup>O</sup>
+      <br><br>
+      where headᵢ = Attention(Q · W<sup>Q</sup><sub>i</sub>, K · W<sup>K</sup><sub>i</sub>, V · W<sup>V</sup><sub>i</sub>)
+      <span class="label">h heads run in parallel; outputs concatenated and projected</span>
+    </div>
+
+    <h3>Dimension Management</h3>
+    <p>To keep computational cost constant regardless of h, each head uses reduced dimension:</p>
+    <ul>
+      <li>d_model = 512, h = 8 → d<sub>k</sub> = d<sub>v</sub> = 512/8 = <strong>64</strong> per head</li>
+      <li>Total parameters for all heads ≈ same as one full-dimension head</li>
+      <li>After concatenation: 8 × 64 = 512, then projected by W<sup>O</sup> ∈ ℝ<sup>512×512</sup></li>
+    </ul>
+
+    <h3>What Different Heads Learn</h3>
+    <p>Research has found that different attention heads specialize in different patterns:</p>
+    <table>
+      <thead>
+        <tr><th>Head Type</th><th>What It Captures</th><th>Example</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Syntactic</td><td>Subject-verb, noun-adjective relationships</td><td>"runs" → "dog"</td></tr>
+        <tr><td>Coreference</td><td>Pronoun references</td><td>"it" → "animal"</td></tr>
+        <tr><td>Local</td><td>Adjacent tokens, n-gram patterns</td><td>Nearby words</td></tr>
+        <tr><td>Long-range</td><td>Distant dependencies across the sequence</td><td>Beginning ↔ end</td></tr>
+        <tr><td>Positional</td><td>Relative or absolute position</td><td>"previous token"</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout info">
+      <div class="callout-title">📐 Dimensions in GPT-3</div>
+      <p style="margin:0;">GPT-3 uses d_model = 12,288, h = 96 heads, d_k = 128 per head. That's 96 separate "perspectives" the model can simultaneously hold on any sequence. The sheer breadth of relational patterns that can be captured is a major reason for the model's power.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 7: MASKED ATTENTION -->
+<div class="section" id="masked">
+  <div class="container" style="padding:0;">
+    <span class="section-number">07 / Masked Attention</span>
+    <h2>Masked Self-Attention</h2>
+
+    <p>In autoregressive generation (language models like GPT), we must ensure that token at position i can only attend to positions ≤ i — not to future tokens. This is enforced via a <strong>causal mask</strong>.</p>
+
+    <h3>How Masking Works</h3>
+    <p>Before softmax, we add a mask matrix M to the score matrix:</p>
+    <div class="math-block">
+      S_masked = S + M
+      <br><br>
+      where M<sub>ij</sub> = 0 if j ≤ i, else -∞
+      <span class="label">-∞ → exp(-∞) = 0, so future positions get zero attention weight</span>
+    </div>
+
+    <div class="diagram">
+      <div class="diagram-title">Causal Mask — upper triangle = -∞ (blocked)</div>
+      <pre><code>         pos0  pos1  pos2  pos3
+pos0  [    0,   -∞,   -∞,   -∞  ]
+pos1  [    0,    0,   -∞,   -∞  ]
+pos2  [    0,    0,    0,   -∞  ]
+pos3  [    0,    0,    0,    0  ]</code></pre>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h4>Encoder (Bidirectional)</h4>
+        <p>In BERT-style models, <strong>no masking</strong> is applied. Every token sees every other token. Full bidirectional context enables rich representations.</p>
+      </div>
+      <div class="card">
+        <h4>Decoder (Causal)</h4>
+        <p>In GPT-style models, the causal mask is applied. Position i sees only positions 0…i. This enables autoregressive generation: generate token by token, left to right.</p>
+      </div>
+    </div>
+
+    <h3>Cross-Attention (Encoder-Decoder)</h3>
+    <p>In encoder-decoder models (e.g., original Transformer for translation), the decoder uses <strong>cross-attention</strong>: Q comes from the decoder's hidden states, but K and V come from the encoder's output. This allows the decoder to "look up" relevant information from the encoded source sequence.</p>
+  </div>
+</div>
+
+<!-- SECTION 8: POSITIONAL ENCODING -->
+<div class="section" id="positional">
+  <div class="container" style="padding:0;">
+    <span class="section-number">08 / Positional Encoding</span>
+    <h2>Positional Encoding</h2>
+
+    <p>Self-attention is <strong>permutation invariant</strong> — if you shuffle the input tokens, you get the same output (also shuffled). This means it has no built-in sense of order. Positional encodings inject position information into the token embeddings.</p>
+
+    <h3>Sinusoidal Positional Encoding (Original)</h3>
+    <div class="math-block">
+      PE(pos, 2i) = sin(pos / 10000<sup>2i/d_model</sup>)
+      <br>
+      PE(pos, 2i+1) = cos(pos / 10000<sup>2i/d_model</sup>)
+      <span class="label">pos = token position, i = dimension index</span>
+    </div>
+
+    <p>Properties of sinusoidal encodings:</p>
+    <ul>
+      <li>Unique vector for every position</li>
+      <li>The distance between any two positions is consistent (PE(pos + k) can be linearly derived from PE(pos))</li>
+      <li>Extrapolates to longer sequences than seen during training</li>
+    </ul>
+
+    <h3>Learned Positional Embeddings</h3>
+    <p>BERT and GPT use <strong>learned position embeddings</strong> — simple trainable vectors for each position, concatenated with token embeddings. Simpler but doesn't generalize to unseen sequence lengths.</p>
+
+    <h3>Rotary Positional Encoding (RoPE)</h3>
+    <p>Used in LLaMA, PaLM, and many modern models. Instead of adding positional info to embeddings, RoPE <strong>rotates</strong> Q and K vectors in a position-dependent way before computing dot products. The dot product between rotated vectors naturally encodes relative position:</p>
+    <div class="math-block">
+      RoPE(qᵢ, pos) = qᵢ · e<sup>iθ·pos</sup>   (in complex notation)
+      <span class="label">Encodes relative position through rotation; scales well to long contexts</span>
+    </div>
+
+    <h3>ALiBi (Attention with Linear Biases)</h3>
+    <p>Instead of adding position encodings to embeddings, ALiBi adds a linear bias to attention scores based on distance between query and key. Simple, effective, and generalizes well to long sequences.</p>
+  </div>
+</div>
+
+<!-- SECTION 9: VARIANTS -->
+<div class="section" id="variants">
+  <div class="container" style="padding:0;">
+    <span class="section-number">09 / Variants & Improvements</span>
+    <h2>Attention Variants</h2>
+
+    <table>
+      <thead>
+        <tr><th>Variant</th><th>Key Idea</th><th>Used In</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Scaled Dot-Product</strong></td>
+          <td>Standard, scales by √d_k</td>
+          <td>All Transformers</td>
+        </tr>
+        <tr>
+          <td><strong>Multi-Head Attention</strong></td>
+          <td>h parallel heads, each with reduced d_k</td>
+          <td>BERT, GPT, T5</td>
+        </tr>
+        <tr>
+          <td><strong>Grouped-Query Attention (GQA)</strong> <span class="badge new">modern</span></td>
+          <td>Multiple Q heads share K,V heads. Reduces KV cache size.</td>
+          <td>LLaMA 2, Mistral</td>
+        </tr>
+        <tr>
+          <td><strong>Multi-Query Attention (MQA)</strong></td>
+          <td>All Q heads share a single K and V head. Very fast inference.</td>
+          <td>Falcon, PaLM</td>
+        </tr>
+        <tr>
+          <td><strong>Sparse Attention</strong></td>
+          <td>Each token only attends to a subset of positions (local window, strided, etc.)</td>
+          <td>BigBird, Longformer</td>
+        </tr>
+        <tr>
+          <td><strong>Flash Attention</strong> <span class="badge key">efficiency</span></td>
+          <td>Tiling-based implementation that avoids materializing full n×n attention matrix in HBM</td>
+          <td>Most modern LLMs</td>
+        </tr>
+        <tr>
+          <td><strong>Linear Attention</strong></td>
+          <td>Approximates softmax attention with O(n) complexity using kernel trick</td>
+          <td>Performer, LinearTransformer</td>
+        </tr>
+        <tr>
+          <td><strong>Cross-Attention</strong></td>
+          <td>Q from one sequence, K/V from another sequence</td>
+          <td>Encoder-decoder models</td>
+        </tr>
+        <tr>
+          <td><strong>Sliding Window Attention</strong></td>
+          <td>Each token attends only to ±w neighboring tokens</td>
+          <td>Mistral, Claude (older)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Flash Attention — Why It Matters</h3>
+    <p>Standard self-attention requires storing an n×n matrix in GPU memory (HBM). For n=65,536 tokens at float16, that's 8GB just for the attention matrix. Flash Attention computes the output in tiles without ever materializing the full matrix, reducing memory from O(n²) to O(n) while achieving the exact same result. It's now ubiquitous in production LLMs.</p>
+  </div>
+</div>
+
+<!-- SECTION 10: COMPLEXITY -->
+<div class="section" id="complexity">
+  <div class="container" style="padding:0;">
+    <span class="section-number">10 / Computational Complexity</span>
+    <h2>Complexity Analysis</h2>
+
+    <table>
+      <thead>
+        <tr><th>Aspect</th><th>Self-Attention</th><th>RNN/LSTM</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Time per layer</td><td>O(n² · d)</td><td>O(n · d²)</td></tr>
+        <tr><td>Memory</td><td>O(n²) for attention matrix</td><td>O(n · d)</td></tr>
+        <tr><td>Sequential ops</td><td>O(1) — fully parallel!</td><td>O(n) — sequential</td></tr>
+        <tr><td>Max path length</td><td>O(1) — any two tokens directly connected</td><td>O(n) — info decays over distance</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warning">
+      <div class="callout-title">⚠️ The Quadratic Bottleneck</div>
+      <p>The O(n²) time and memory complexity is the main limitation of self-attention. For n = 1,000 tokens, the attention matrix is 1M elements. For n = 100,000 tokens (long documents), it's 10B elements — infeasible without approximations like Flash Attention, sparse attention, or linear attention methods.</p>
+    </div>
+
+    <h3>KV Cache (Inference Optimization)</h3>
+    <p>During autoregressive generation, at each new token we'd naively recompute K and V for all previous tokens. The <strong>KV cache</strong> caches computed K and V tensors so we only compute the new token's K and V at each step, reducing inference time from O(n²) per token to O(n) per token.</p>
+
+    <div class="math-block" style="text-align:left; font-size:13px;">
+      Without KV cache: for token n, compute attention over all n tokens → O(n²) total<br>
+      With KV cache: store K<sub>1..n-1</sub>, V<sub>1..n-1</sub>, compute only K<sub>n</sub>, V<sub>n</sub> → O(n) total
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 11: CODE -->
+<div class="section" id="code">
+  <div class="container" style="padding:0;">
+    <span class="section-number">11 / Implementation</span>
+    <h2>Code: From Scratch</h2>
+
+    <h3>NumPy — Minimal Self-Attention</h3>
+    <pre><code><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">scaled_dot_product_attention</span>(Q, K, V, mask=<span class="kw">None</span>):
+    <span class="str">"""
+    Q: (n, d_k)  - Query matrix
+    K: (n, d_k)  - Key matrix
+    V: (n, d_v)  - Value matrix
+    mask: (n, n) - Optional causal mask (True = masked out)
+    """</span>
+    d_k = Q.shape[-<span class="num">1</span>]
+    
+    <span class="cm"># Step 1: Compute raw attention scores</span>
+    scores = Q @ K.T / np.sqrt(d_k)   <span class="cm"># (n, n)</span>
+    
+    <span class="cm"># Step 2: Apply mask (causal masking)</span>
+    <span class="kw">if</span> mask <span class="kw">is not None</span>:
+        scores = np.where(mask, -<span class="num">1e9</span>, scores)
+    
+    <span class="cm"># Step 3: Softmax along last axis (per query)</span>
+    exp_scores = np.exp(scores - scores.max(axis=-<span class="num">1</span>, keepdims=<span class="kw">True</span>))
+    attn_weights = exp_scores / exp_scores.sum(axis=-<span class="num">1</span>, keepdims=<span class="kw">True</span>)  <span class="cm"># (n, n)</span>
+    
+    <span class="cm"># Step 4: Weighted sum of values</span>
+    output = attn_weights @ V  <span class="cm"># (n, d_v)</span>
+    
+    <span class="kw">return</span> output, attn_weights
+
+
+<span class="kw">def</span> <span class="fn">self_attention_layer</span>(X, W_Q, W_K, W_V):
+    <span class="str">"""Full self-attention layer with projection matrices."""</span>
+    Q = X @ W_Q   <span class="cm"># (n, d_k)</span>
+    K = X @ W_K   <span class="cm"># (n, d_k)</span>
+    V = X @ W_V   <span class="cm"># (n, d_v)</span>
+    output, weights = scaled_dot_product_attention(Q, K, V)
+    <span class="kw">return</span> output, weights
+
+<span class="cm"># Example</span>
+n, d_model, d_k, d_v = <span class="num">5</span>, <span class="num">16</span>, <span class="num">8</span>, <span class="num">8</span>
+X    = np.random.randn(n, d_model)
+W_Q  = np.random.randn(d_model, d_k) * <span class="num">0.1</span>
+W_K  = np.random.randn(d_model, d_k) * <span class="num">0.1</span>
+W_V  = np.random.randn(d_model, d_v) * <span class="num">0.1</span>
+
+out, attn = self_attention_layer(X, W_Q, W_K, W_V)
+<span class="fn">print</span>(<span class="str">f"Output shape: {out.shape}"</span>)    <span class="cm"># (5, 8)</span>
+<span class="fn">print</span>(<span class="str">f"Attention shape: {attn.shape}"</span>) <span class="cm"># (5, 5)</span></code></pre>
+
+    <h3>PyTorch — Multi-Head Attention</h3>
+    <pre><code><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+<span class="kw">import</span> math
+
+<span class="kw">class</span> <span class="fn">MultiHeadAttention</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, d_model, num_heads):
+        <span class="fn">super</span>().__init__()
+        <span class="kw">assert</span> d_model % num_heads == <span class="num">0</span>
+        
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+        
+        <span class="cm"># Projection matrices (all heads packed into one matrix)</span>
+        self.W_Q = nn.Linear(d_model, d_model, bias=<span class="kw">False</span>)
+        self.W_K = nn.Linear(d_model, d_model, bias=<span class="kw">False</span>)
+        self.W_V = nn.Linear(d_model, d_model, bias=<span class="kw">False</span>)
+        self.W_O = nn.Linear(d_model, d_model, bias=<span class="kw">False</span>)
+
+    <span class="kw">def</span> <span class="fn">split_heads</span>(self, x, batch_size):
+        <span class="cm"># (B, n, d_model) → (B, h, n, d_k)</span>
+        x = x.view(batch_size, -<span class="num">1</span>, self.num_heads, self.d_k)
+        <span class="kw">return</span> x.transpose(<span class="num">1</span>, <span class="num">2</span>)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x, mask=<span class="kw">None</span>):
+        B, n, _ = x.shape
+        
+        <span class="cm"># Project to Q, K, V and split into heads</span>
+        Q = self.split_heads(self.W_Q(x), B)  <span class="cm"># (B, h, n, d_k)</span>
+        K = self.split_heads(self.W_K(x), B)
+        V = self.split_heads(self.W_V(x), B)
+        
+        <span class="cm"># Scaled dot-product attention (batched, multi-head)</span>
+        scores = Q @ K.transpose(-<span class="num">2</span>, -<span class="num">1</span>) / math.sqrt(self.d_k)  <span class="cm"># (B,h,n,n)</span>
+        
+        <span class="kw">if</span> mask <span class="kw">is not None</span>:
+            scores = scores.masked_fill(mask == <span class="num">0</span>, float(<span class="str">'-inf'</span>))
+        
+        attn_weights = F.softmax(scores, dim=-<span class="num">1</span>)               <span class="cm"># (B,h,n,n)</span>
+        context = attn_weights @ V                                <span class="cm"># (B,h,n,d_k)</span>
+        
+        <span class="cm"># Merge heads back: (B,h,n,d_k) → (B,n,d_model)</span>
+        context = context.transpose(<span class="num">1</span>, <span class="num">2</span>).contiguous()
+        context = context.view(B, n, self.d_model)
+        
+        <span class="cm"># Output projection</span>
+        <span class="kw">return</span> self.W_O(context), attn_weights
+
+<span class="cm"># Usage</span>
+mha = MultiHeadAttention(d_model=<span class="num">512</span>, num_heads=<span class="num">8</span>)
+x = torch.randn(<span class="num">2</span>, <span class="num">64</span>, <span class="num">512</span>)  <span class="cm"># batch=2, seq_len=64, d_model=512</span>
+out, attn = mha(x)
+<span class="fn">print</span>(out.shape)   <span class="cm"># torch.Size([2, 64, 512])</span></code></pre>
+
+    <h3>Using PyTorch's Built-in</h3>
+    <pre><code><span class="cm"># PyTorch has a highly optimized built-in MHA:</span>
+mha = nn.MultiheadAttention(embed_dim=<span class="num">512</span>, num_heads=<span class="num">8</span>, batch_first=<span class="kw">True</span>)
+
+<span class="cm"># Self-attention: query=key=value=x</span>
+x = torch.randn(<span class="num">2</span>, <span class="num">64</span>, <span class="num">512</span>)
+output, attn_weights = mha(x, x, x)
+
+<span class="cm"># Causal mask (for decoder/LM tasks):</span>
+causal_mask = nn.Transformer.generate_square_subsequent_mask(<span class="num">64</span>)
+output, _ = mha(x, x, x, attn_mask=causal_mask)</code></pre>
+  </div>
+</div>
+
+<!-- SECTION 12: IN TRANSFORMER -->
+<div class="section" id="transformer">
+  <div class="container" style="padding:0;">
+    <span class="section-number">12 / In the Transformer</span>
+    <h2>Self-Attention in the Transformer Architecture</h2>
+
+    <p>Self-attention doesn't operate in isolation — it's embedded within a Transformer block that includes normalization, residual connections, and a feed-forward network.</p>
+
+    <h3>Full Transformer Block</h3>
+    <pre><code><span class="cm"># One Transformer block (Pre-LayerNorm variant, used by most modern LLMs)</span>
+<span class="kw">def</span> <span class="fn">transformer_block</span>(x, attn, ff, ln1, ln2):
+    <span class="cm"># Self-attention sub-layer with residual connection</span>
+    x = x + attn(ln1(x))    <span class="cm"># Pre-LN: normalize BEFORE attention</span>
+    
+    <span class="cm"># Feed-forward sub-layer with residual connection</span>
+    x = x + ff(ln2(x))      <span class="cm"># FFN: two linear layers with activation</span>
+    
+    <span class="kw">return</span> x</code></pre>
+
+    <p>Key components around self-attention:</p>
+    <ul>
+      <li><strong>Layer Normalization</strong> — Stabilizes training. Pre-LN (normalize before) is now preferred over Post-LN (original paper)</li>
+      <li><strong>Residual Connection</strong> — x + Attention(x) allows gradients to flow freely through deep networks</li>
+      <li><strong>Feed-Forward Network</strong> — Two linear layers with a nonlinearity (GeLU/ReLU). Typically 4× the model dimension. Provides token-wise processing after attention aggregates across positions</li>
+    </ul>
+
+    <div class="callout insight">
+      <div class="callout-title">💡 Attention vs. FFN: Division of Labor</div>
+      <p>Attention aggregates information <em>across positions</em> (communication step). The FFN processes each token's representation <em>independently</em> after aggregation (computation step). Some research suggests attention handles syntax/coreference while FFN stores factual knowledge (acting as a key-value memory).</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 13: APPLICATIONS -->
+<div class="section" id="applications">
+  <div class="container" style="padding:0;">
+    <span class="section-number">13 / Applications</span>
+    <h2>Applications of Self-Attention</h2>
+
+    <div class="grid-2">
+      <div class="card">
+        <h4>📝 NLP</h4>
+        <p>Language models (GPT-4, LLaMA), BERT for classification, T5 for seq2seq, machine translation, summarization, question answering, code generation.</p>
+      </div>
+      <div class="card">
+        <h4>🖼️ Vision</h4>
+        <p>Vision Transformers (ViT) apply self-attention to image patches. DALL-E, Stable Diffusion's UNet, SAM (Segment Anything).</p>
+      </div>
+      <div class="card">
+        <h4>🎵 Audio</h4>
+        <p>Whisper (speech recognition), AudioLM, MusicGen. Self-attention over spectrogram patches or audio tokens.</p>
+      </div>
+      <div class="card">
+        <h4>🧬 Science</h4>
+        <p>AlphaFold 2 uses attention for protein structure prediction. Drug discovery, genomics, weather forecasting (Pangu, GraphCast).</p>
+      </div>
+      <div class="card">
+        <h4>🤖 Multimodal</h4>
+        <p>GPT-4V, Flamingo, LLaVA combine vision and language via cross-attention between image and text representations.</p>
+      </div>
+      <div class="card">
+        <h4>📊 Tabular/Graph</h4>
+        <p>Graph attention networks (GAT), Tabular Transformers. Self-attention over graph nodes or table rows/columns.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 14: FAQ -->
+<div class="section" id="faq">
+  <div class="container" style="padding:0;">
+    <span class="section-number">14 / FAQ</span>
+    <h2>Frequently Asked Questions</h2>
+
+    <h3>Q: Is attention always "soft" (differentiable)?</h3>
+    <p>Standard attention is soft — it's a weighted average, so gradients flow through it. "Hard attention" picks exactly one position (argmax), but this is non-differentiable and requires reinforcement learning tricks. Soft attention is almost exclusively used in practice.</p>
+
+    <h3>Q: Does self-attention replace positional information entirely?</h3>
+    <p>No. Without positional encodings, self-attention is truly order-agnostic — "cat bites dog" and "dog bites cat" produce the same representations. Positional encodings (sinusoidal, learned, RoPE, ALiBi) are essential for the model to understand sequence order.</p>
+
+    <h3>Q: What's the difference between self-attention and cross-attention?</h3>
+    <p>In <strong>self-attention</strong>, Q, K, and V all come from the same sequence X. In <strong>cross-attention</strong>, Q comes from sequence A (e.g., decoder), but K and V come from sequence B (e.g., encoder output). Cross-attention lets two sequences interact.</p>
+
+    <h3>Q: Why use attention instead of convolutions?</h3>
+    <p>Convolutions have a fixed local receptive field (limited by kernel size), so modeling long-range dependencies requires many stacked layers. Self-attention has a global receptive field — every pair of positions interacts directly in O(1) layers. Convolutions are O(1) per element but need O(n/k) layers for range k; attention is O(n²) per layer but O(1) layers for any range.</p>
+
+    <h3>Q: How does attention differ in encoder vs. decoder?</h3>
+    <ul>
+      <li><strong>Encoder</strong> — Bidirectional self-attention (no mask). Every token sees all tokens. Used for understanding/embedding tasks.</li>
+      <li><strong>Decoder</strong> — Causal (masked) self-attention + cross-attention. Used for generation.</li>
+    </ul>
+
+    <h3>Q: What is "attention head pruning"?</h3>
+    <p>Research (Michel et al. 2019) showed that many attention heads can be removed at test time with minimal performance drop. Some heads are redundant; others are critical. This is used for model compression.</p>
+
+    <h3>Q: How does attention handle variable-length sequences?</h3>
+    <p>Self-attention naturally handles variable lengths because it operates on whatever tokens are present. Padding tokens are typically masked out (padded positions get -∞ scores before softmax) so they don't affect outputs of real tokens.</p>
+
+    <div class="callout formula">
+      <div class="callout-title">📐 Quick Reference Cheat Sheet</div>
+      <table style="margin:0; font-size:14px;">
+        <tr><td><strong>Core formula</strong></td><td><code>softmax(QKᵀ/√dₖ) · V</code></td></tr>
+        <tr><td><strong>Q, K, V shapes</strong></td><td>(n × d_k), (n × d_k), (n × d_v)</td></tr>
+        <tr><td><strong>Output shape</strong></td><td>(n × d_v)</td></tr>
+        <tr><td><strong>Attention matrix</strong></td><td>(n × n) — n²  complexity</td></tr>
+        <tr><td><strong>Time complexity</strong></td><td>O(n² · d)</td></tr>
+        <tr><td><strong>Max path length</strong></td><td>O(1) — any two tokens connect directly</td></tr>
+        <tr><td><strong>Causal mask</strong></td><td>Upper triangle = -∞ before softmax</td></tr>
+        <tr><td><strong>GPT-3 config</strong></td><td>d_model=12288, h=96 heads, d_k=128</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="padding: 40px 0; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-family: 'Syne', sans-serif; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;">
+  Self-Attention · Complete Documentation · A to Z
+</div>
+
+</main>
+</div>
+
+<script>
+  // Highlight active sidebar section on scroll
+  const sections = document.querySelectorAll('.section[id]');
+  const links = document.querySelectorAll('.sidebar a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
