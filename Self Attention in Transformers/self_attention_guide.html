@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Self-Attention: A Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a27;
+    --border: #2a2a3d;
+    --accent1: #6ee7f7;
+    --accent2: #a78bfa;
+    --accent3: #f472b6;
+    --accent4: #34d399;
+    --text: #e2e2f0;
+    --muted: #7070a0;
+    --query: #6ee7f7;
+    --key: #f472b6;
+    --value: #34d399;
+    --attn: #a78bfa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 16px;
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 260px;
+    background: linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 50%, #0a1a2e 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 20px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(110,231,247,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(167,139,250,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent1);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent1) 0%, var(--accent2) 50%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .hero p {
+    font-size: 1.1rem;
+    color: var(--muted);
+    max-width: 560px;
+    font-weight: 300;
+  }
+
+  /* Layout */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* Section */
+  .section {
+    margin-top: 64px;
+  }
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 10px;
+  }
+  .section h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+    position: relative;
+    padding-left: 16px;
+  }
+  .section h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    background: linear-gradient(180deg, var(--accent1), var(--accent2));
+    border-radius: 2px;
+  }
+  .section p {
+    color: #b0b0cc;
+    margin-bottom: 16px;
+    font-weight: 300;
+  }
+  .section p strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent1);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+    font-size: 0.95rem;
+    color: #c0c0e0;
+  }
+  .callout.purple { border-left-color: var(--accent2); }
+  .callout.pink   { border-left-color: var(--accent3); }
+  .callout.green  { border-left-color: var(--accent4); }
+
+  /* ─── DIAGRAMS ────────────────────────────────────────────── */
+
+  /* Diagram 1: Basic Self-Attention Flow */
+  .diag-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 24px;
+    margin: 28px 0;
+    overflow-x: auto;
+  }
+  .diag-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 28px;
+    text-align: center;
+  }
+
+  /* Flow diagram */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: nowrap;
+    min-width: 520px;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text);
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+  .flow-box .sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .flow-box.highlight { border-color: var(--accent1); color: var(--accent1); }
+  .flow-box.yellow {
+    background: rgba(251,191,36,0.08);
+    border: 2px solid #fbbf24;
+    color: #fbbf24;
+    min-width: 130px;
+  }
+  .flow-arrow {
+    color: var(--muted);
+    font-size: 1.3rem;
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+
+  /* Embedding diagram */
+  .embed-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .embed-chip {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+  }
+  .embed-chip .word { font-size: 1rem; font-weight: 600; }
+  .embed-chip .vec  { font-size: 0.72rem; color: rgba(255,255,255,0.5); margin-top: 4px; }
+  .e1 { background: rgba(110,231,247,0.12); border: 1px solid rgba(110,231,247,0.4); color: var(--accent1); }
+  .e2 { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.4); color: var(--accent2); }
+  .e3 { background: rgba(244,114,182,0.12); border: 1px solid rgba(244,114,182,0.4); color: var(--accent3); }
+  .arrow-down {
+    text-align: center;
+    font-size: 2rem;
+    color: var(--muted);
+    margin: 8px 0;
+  }
+  .sa-block {
+    margin: 0 auto;
+    width: fit-content;
+    padding: 16px 40px;
+    background: rgba(251,191,36,0.07);
+    border: 2px dashed #fbbf24;
+    border-radius: 12px;
+    color: #fbbf24;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    text-align: center;
+  }
+  .sa-block .sub {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: rgba(251,191,36,0.6);
+    font-family: 'DM Sans', sans-serif;
+    margin-top: 4px;
+  }
+  .output-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .out-chip {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    background: rgba(52,211,153,0.1);
+    border: 1px solid rgba(52,211,153,0.4);
+    color: var(--accent4);
+  }
+  .out-chip .word { font-size: 1rem; font-weight: 600; }
+  .out-chip .vec  { font-size: 0.72rem; color: rgba(52,211,153,0.5); margin-top: 4px; }
+
+  /* QKV Diagram */
+  .qkv-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .qkv-card {
+    border-radius: 10px;
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .qkv-card h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .qkv-card .icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .qkv-card p { font-size: 0.82rem; color: #a0a0c0; margin: 0; }
+  .q-card { background: rgba(110,231,247,0.08); border: 1px solid rgba(110,231,247,0.3); }
+  .q-card h4 { color: var(--query); }
+  .k-card { background: rgba(244,114,182,0.08); border: 1px solid rgba(244,114,182,0.3); }
+  .k-card h4 { color: var(--key); }
+  .v-card { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.3); }
+  .v-card h4 { color: var(--value); }
+
+  /* Matrix diagram */
+  .matrix-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+  }
+  .matrix {
+    border-left: 2px solid var(--muted);
+    border-right: 2px solid var(--muted);
+    padding: 10px 14px;
+    line-height: 2;
+    text-align: center;
+  }
+  .matrix .label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: block;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .matrix .row { display: flex; gap: 10px; justify-content: center; }
+  .matrix .cell { min-width: 32px; color: #9090c0; }
+  .mat-op { font-size: 1.4rem; color: var(--muted); }
+  .mat-eq { font-size: 1.4rem; color: var(--accent2); font-weight: bold; }
+  .mat-result .matrix { border-color: var(--accent4); }
+  .mat-result .matrix .cell { color: var(--accent4); }
+
+  /* Attention formula */
+  .formula-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 1.1rem;
+  }
+  .formula-box .formula {
+    font-size: 1.2rem;
+    color: var(--accent1);
+    margin-bottom: 12px;
+  }
+  .formula-box .parts {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .formula-box .part {
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .formula-box .part span {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 0.95rem;
+  }
+  .formula-box .part .q { color: var(--query); }
+  .formula-box .part .k { color: var(--key); }
+  .formula-box .part .v { color: var(--value); }
+  .formula-box .part .d { color: var(--accent2); }
+
+  /* Pipeline */
+  .pipeline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    margin: 24px 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 600px;
+  }
+  .pipe-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pipe-box {
+    width: 110px;
+    padding: 12px 8px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .pipe-box .num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin: 0 auto 6px;
+  }
+  .pipe-arrow {
+    font-size: 1.2rem;
+    color: var(--muted);
+    padding: 0 4px;
+    margin-top: 24px;
+  }
+  .p1 .num { background: rgba(110,231,247,0.2); color: var(--query); }
+  .p2 .num { background: rgba(244,114,182,0.2); color: var(--key); }
+  .p3 .num { background: rgba(167,139,250,0.2); color: var(--accent2); }
+  .p4 .num { background: rgba(251,191,36,0.2); color: #fbbf24; }
+  .p5 .num { background: rgba(52,211,153,0.2); color: var(--value); }
+
+  /* ─── CODE ────────────────────────────────────────────────── */
+  pre {
+    background: #0d0d18;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    margin: 20px 0;
+    position: relative;
+  }
+  .code-label {
+    position: absolute;
+    top: 10px; right: 14px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+  }
+  .kw { color: #a78bfa; }
+  .fn { color: #6ee7f7; }
+  .cm { color: #4a4a6a; font-style: italic; }
+  .st { color: #f472b6; }
+  .nm { color: #34d399; }
+  .cls{ color: #fbbf24; }
+
+  /* Summary table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.9rem;
+  }
+  th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: left;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    color: var(--accent2);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(42,42,61,0.5);
+    color: #b0b0cc;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 600px) {
+    .qkv-grid { grid-template-columns: 1fr; }
+    .flow { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-tag">Deep Learning · Transformers · NLP</div>
+  <h1>Self-Attention<br>Explained</h1>
+  <p>A comprehensive guide to understanding how Self-Attention turns static word embeddings into dynamic, context-aware representations.</p>
+</div>
+
+<div class="container">
+
+  <!-- ─── 1. What is Self-Attention ─────────────────────── -->
+  <div class="section">
+    <div class="section-label">01 — Overview</div>
+    <h2>What is Self-Attention?</h2>
+    <p>Self-Attention is a mechanism that transforms <strong>static word embeddings</strong> into <strong>dynamic, contextual embeddings</strong>. It is the foundational building block of the Transformer architecture, which in turn underpins virtually all modern Generative AI systems.</p>
+    <p>The core idea: a word like <em>"bank"</em> can mean a river bank or a financial institution. Self-Attention lets the model look at surrounding words to resolve that ambiguity — and encode the result into the word's representation.</p>
+
+    <div class="diag-card">
+      <div class="diag-title">Diagram 1 — Self-Attention Block Overview</div>
+      <div class="embed-row">
+        <div class="embed-chip e1"><div class="word">Humans</div><div class="vec">e₁ = [0.2, 0.8, ...]</div></div>
+        <div class="embed-chip e2"><div class="word">love</div><div class="vec">e₂ = [0.5, 0.1, ...]</div></div>
+        <div class="embed-chip e3"><div class="word">smartphones</div><div class="vec">e₃ = [0.9, 0.3, ...]</div></div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="sa-block">✦ Self-Attention Block<div class="sub">Dot Products · Softmax · Weighted Sum</div></div>
+      <div class="arrow-down">↓</div>
+      <div class="output-row">
+        <div class="out-chip"><div class="word">Humans</div><div class="vec">y₁ — contextual</div></div>
+        <div class="out-chip"><div class="word">love</div><div class="vec">y₂ — contextual</div></div>
+        <div class="out-chip"><div class="word">smartphones</div><div class="vec">y₃ — contextual</div></div>
+      </div>
+    </div>
+
+    <p>Each output vector <strong>y₁, y₂, y₃</strong> is a contextual embedding — it encodes not just the meaning of the word in isolation, but its meaning <em>within the sentence</em>.</p>
+  </div>
+
+  <!-- ─── 2. Basic Mechanism ──────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">02 — Mechanism</div>
+    <h2>How It Works: The Basic Approach</h2>
+    <p>In the simplest form, a word's new contextual embedding is computed as a <strong>weighted sum</strong> of all word embeddings. The weights are similarity scores — how much attention each word should pay to every other word.</p>
+
+    <div class="diag-card">
+      <div class="diag-title">Diagram 2 — Step-by-Step Attention Pipeline</div>
+      <div style="overflow-x:auto">
+      <div class="pipeline">
+        <div class="pipe-step p1">
+          <div class="pipe-box"><div class="num">1</div>Input Embeddings<br><span style="color:var(--muted);font-size:0.72rem">e₁, e₂, e₃</span></div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step p2">
+          <div class="pipe-box"><div class="num">2</div>Dot Products<br><span style="color:var(--muted);font-size:0.72rem">eᵢ · eⱼ</span></div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step p3">
+          <div class="pipe-box"><div class="num">3</div>Softmax<br><span style="color:var(--muted);font-size:0.72rem">Normalize scores</span></div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step p4">
+          <div class="pipe-box"><div class="num">4</div>Weighted Sum<br><span style="color:var(--muted);font-size:0.72rem">α · embeddings</span></div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step p5">
+          <div class="pipe-box"><div class="num">5</div>Output<br><span style="color:var(--muted);font-size:0.72rem">y₁, y₂, y₃</span></div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <p>The model computes a similarity score between every pair of words using the <strong>dot product</strong>. Higher scores mean greater relevance. Softmax normalizes scores to sum to 1 (attention weights). The final embedding for each word is a weighted combination of all embeddings.</p>
+
+    <div class="callout">
+      <strong>Parallelization:</strong> All contextual embeddings can be computed <em>simultaneously</em> using matrix operations — making Self-Attention vastly more efficient than sequential models like RNNs.
+    </div>
+
+    <div class="diag-card">
+      <div class="diag-title">Diagram 3 — Matrix Multiplication for Parallel Computation</div>
+      <div class="matrix-wrap">
+        <div>
+          <div class="matrix">
+            <span class="label" style="color:var(--accent1)">E</span>
+            <div class="row"><span class="cell">e₁</span></div>
+            <div class="row"><span class="cell">e₂</span></div>
+            <div class="row"><span class="cell">e₃</span></div>
+          </div>
+          <div style="text-align:center;font-size:0.72rem;color:var(--muted);margin-top:6px">Input matrix</div>
+        </div>
+        <div class="mat-op" style="margin-top:30px">×</div>
+        <div>
+          <div class="matrix">
+            <span class="label" style="color:var(--accent1)">Eᵀ</span>
+            <div class="row"><span class="cell">e₁ᵀ</span><span class="cell">e₂ᵀ</span><span class="cell">e₃ᵀ</span></div>
+          </div>
+          <div style="text-align:center;font-size:0.72rem;color:var(--muted);margin-top:6px">Transposed</div>
+        </div>
+        <div class="mat-op" style="margin-top:30px">→</div>
+        <div>
+          <div class="matrix">
+            <span class="label" style="color:var(--accent2)">S</span>
+            <div class="row"><span class="cell">s₁₁</span><span class="cell">s₁₂</span><span class="cell">s₁₃</span></div>
+            <div class="row"><span class="cell">s₂₁</span><span class="cell">s₂₂</span><span class="cell">s₂₃</span></div>
+            <div class="row"><span class="cell">s₃₁</span><span class="cell">s₃₂</span><span class="cell">s₃₃</span></div>
+          </div>
+          <div style="text-align:center;font-size:0.72rem;color:var(--muted);margin-top:6px">Similarity scores</div>
+        </div>
+        <div class="mat-op" style="margin-top:30px">→ Softmax →</div>
+        <div class="mat-result">
+          <div class="matrix">
+            <span class="label" style="color:var(--accent4)">Y</span>
+            <div class="row"><span class="cell">y₁</span></div>
+            <div class="row"><span class="cell">y₂</span></div>
+            <div class="row"><span class="cell">y₃</span></div>
+          </div>
+          <div style="text-align:center;font-size:0.72rem;color:var(--accent4);margin-top:6px">Context embeddings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 3. Limitation ────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">03 — Limitation</div>
+    <h2>The Problem: No Learnable Parameters</h2>
+    <p>The basic approach has one critical flaw — <strong>no learnable weights</strong>. Without them, the model cannot adapt to a specific task. It produces the same generic contextual embedding regardless of whether we're translating, summarizing, or classifying.</p>
+    <p>Consider these examples in machine translation:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0;">
+      <div class="callout pink"><strong>"Piece of cake"</strong> — should be translated idiomatically as "easy task," not literally as a dessert slice.</div>
+      <div class="callout green"><strong>"Break a leg"</strong> — means "good luck" in English theatre, not a physical injury command.</div>
+    </div>
+
+    <p>A model without learnable parameters would fail on both. It needs <strong>task-specific embeddings</strong> that are shaped by training data — and for that, we need learnable weights.</p>
+  </div>
+
+  <!-- ─── 4. QKV ─────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">04 — Query, Key & Value</div>
+    <h2>Introducing Query, Key, and Value</h2>
+    <p>The solution is to give each word embedding <strong>three distinct roles</strong> — and to learn separate transformations for each role using dedicated weight matrices.</p>
+
+    <div class="diag-card">
+      <div class="diag-title">Diagram 4 — The Three Roles of Every Word Embedding</div>
+      <div class="qkv-grid">
+        <div class="qkv-card q-card">
+          <div class="icon">🔍</div>
+          <h4>Query (Q)</h4>
+          <p>Asks: "Which other words are relevant to me?" Used to compute attention scores against Keys.</p>
+        </div>
+        <div class="qkv-card k-card">
+          <div class="icon">🗝️</div>
+          <h4>Key (K)</h4>
+          <p>Answers queries from other words: "How relevant am I to you?" Paired with Queries to produce scores.</p>
+        </div>
+        <div class="qkv-card v-card">
+          <div class="icon">📦</div>
+          <h4>Value (V)</h4>
+          <p>Contains the actual information to be aggregated in the weighted sum for the final output.</p>
+        </div>
+      </div>
+    </div>
+
+    <p>Forcing a single vector to simultaneously act as its own Query, Key, and Value is <strong>inefficient</strong> — like asking someone to simultaneously ask a question, answer it, and represent the information. Separating the roles allows each to be optimized for its specific function.</p>
+  </div>
+
+  <!-- ─── 5. Weight Matrices ──────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">05 — Learnable Parameters</div>
+    <h2>Weight Matrices W<sub>q</sub>, W<sub>k</sub>, W<sub>v</sub></h2>
+    <p>Each word embedding <strong>e</strong> is projected into three vectors through matrix multiplication with three learned weight matrices:</p>
+
+    <div class="diag-card">
+      <div class="diag-title">Diagram 5 — Projecting Embeddings into Q, K, V Vectors</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+        <div style="padding:12px 32px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--text);">
+          e  <span style="color:var(--muted)">(word embedding)</span>
+        </div>
+        <div style="display:flex;gap:40px;align-items:flex-start">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="color:var(--muted);font-size:0.8rem">× W<sub>q</sub></div>
+            <div style="padding:12px 24px;background:rgba(110,231,247,0.08);border:1px solid rgba(110,231,247,0.3);border-radius:8px;color:var(--query);font-family:'DM Mono',monospace;font-size:0.9rem;">q  Query</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="color:var(--muted);font-size:0.8rem">× W<sub>k</sub></div>
+            <div style="padding:12px 24px;background:rgba(244,114,182,0.08);border:1px solid rgba(244,114,182,0.3);border-radius:8px;color:var(--key);font-family:'DM Mono',monospace;font-size:0.9rem;">k  Key</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="color:var(--muted);font-size:0.8rem">× W<sub>v</sub></div>
+            <div style="padding:12px 24px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:8px;color:var(--value);font-family:'DM Mono',monospace;font-size:0.9rem;">v  Value</div>
+          </div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);text-align:center;max-width:480px">The same W<sub>q</sub>, W<sub>k</sub>, W<sub>v</sub> matrices are shared across <em>all</em> words in the sentence. They are initialized randomly and refined during training via backpropagation.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 6. Full Formula ─────────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">06 — The Formula</div>
+    <h2>The Scaled Dot-Product Attention Formula</h2>
+    <p>With Q, K, and V in place, the full attention calculation is:</p>
+
+    <div class="formula-box">
+      <div class="formula">Attention(Q, K, V) = Softmax( QKᵀ / √d<sub>k</sub> ) · V</div>
+      <div class="parts">
+        <div class="part"><span class="q">Q</span>Query matrix</div>
+        <div class="part"><span class="k">K</span>Key matrix</div>
+        <div class="part"><span class="v">V</span>Value matrix</div>
+        <div class="part"><span class="d">√d<sub>k</sub></span>Scaling factor</div>
+      </div>
+    </div>
+
+    <p>The <strong>scaling factor √d<sub>k</sub></strong> (square root of the key dimension) prevents dot products from growing too large in magnitude, which would push Softmax into regions with very small gradients — making training unstable.</p>
+
+    <div class="callout purple">
+      <strong>Why scale?</strong> For large embedding dimensions, dot products can become extremely large. Dividing by √d<sub>k</sub> keeps values in a range where Softmax produces meaningful, non-saturated gradients during backpropagation.
+    </div>
+  </div>
+
+  <!-- ─── 7. Comparison Table ─────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">07 — Comparison</div>
+    <h2>Basic vs. Learned Self-Attention</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Basic Self-Attention</th>
+          <th>Learned (Q/K/V) Attention</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Learnable parameters</td>
+          <td style="color:#f87171">✗ None</td>
+          <td style="color:#4ade80">✓ Wq, Wk, Wv</td>
+        </tr>
+        <tr>
+          <td>Task adaptability</td>
+          <td style="color:#f87171">✗ Fixed, general</td>
+          <td style="color:#4ade80">✓ Task-specific via training</td>
+        </tr>
+        <tr>
+          <td>Parallel computation</td>
+          <td style="color:#4ade80">✓ Yes</td>
+          <td style="color:#4ade80">✓ Yes (matrix ops)</td>
+        </tr>
+        <tr>
+          <td>Handles idioms</td>
+          <td style="color:#f87171">✗ Fails</td>
+          <td style="color:#4ade80">✓ Learned from data</td>
+        </tr>
+        <tr>
+          <td>Backpropagation</td>
+          <td style="color:#f87171">✗ Nothing to update</td>
+          <td style="color:#4ade80">✓ Continuous refinement</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─── 8. Python Code ──────────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">08 — Code</div>
+    <h2>Self-Attention from Scratch (Python)</h2>
+    <p>Here is a clean NumPy implementation of Scaled Dot-Product Self-Attention:</p>
+
+    <pre><code><span class="code-label">Python · NumPy</span><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># ── Helper ──────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">softmax</span>(x):
+    <span class="cm">"""Row-wise softmax."""</span>
+    e = np.exp(x - np.max(x, axis=<span class="nm">-1</span>, keepdims=<span class="kw">True</span>))
+    <span class="kw">return</span> e / e.sum(axis=<span class="nm">-1</span>, keepdims=<span class="kw">True</span>)
+
+<span class="cm"># ── Scaled Dot-Product Attention ────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">scaled_dot_product_attention</span>(Q, K, V):
+    <span class="cm">"""
+    Args:
+        Q : (seq_len, d_k)  — Query matrix
+        K : (seq_len, d_k)  — Key matrix
+        V : (seq_len, d_v)  — Value matrix
+    Returns:
+        output : (seq_len, d_v)  — Contextual embeddings
+        weights: (seq_len, seq_len) — Attention map
+    """</span>
+    d_k = Q.shape[<span class="nm">-1</span>]
+
+    <span class="cm"># Step 1: Compute raw attention scores</span>
+    scores = Q @ K.T / np.sqrt(d_k)          <span class="cm"># (seq, seq)</span>
+
+    <span class="cm"># Step 2: Normalize with Softmax</span>
+    weights = softmax(scores)                 <span class="cm"># (seq, seq)</span>
+
+    <span class="cm"># Step 3: Weighted sum of Values</span>
+    output = weights @ V                      <span class="cm"># (seq, d_v)</span>
+    <span class="kw">return</span> output, weights
+
+<span class="cm"># ── Self-Attention Layer ─────────────────────────────────────</span>
+<span class="kw">class</span> <span class="cls">SelfAttention</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, embed_dim, d_k=<span class="kw">None</span>, d_v=<span class="kw">None</span>):
+        self.d_k = d_k <span class="kw">or</span> embed_dim
+        self.d_v = d_v <span class="kw">or</span> embed_dim
+
+        <span class="cm"># Learnable weight matrices (Xavier initialization)</span>
+        scale = np.sqrt(<span class="nm">2.0</span> / (embed_dim + self.d_k))
+        self.Wq = np.random.randn(embed_dim, self.d_k) * scale
+        self.Wk = np.random.randn(embed_dim, self.d_k) * scale
+        self.Wv = np.random.randn(embed_dim, self.d_v) * scale
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, X):
+        <span class="cm">"""
+        X: (seq_len, embed_dim) — stacked word embeddings
+        Returns contextual embeddings of same shape.
+        """</span>
+        Q = X @ self.Wq     <span class="cm"># (seq, d_k)</span>
+        K = X @ self.Wk     <span class="cm"># (seq, d_k)</span>
+        V = X @ self.Wv     <span class="cm"># (seq, d_v)</span>
+
+        output, weights = scaled_dot_product_attention(Q, K, V)
+        <span class="kw">return</span> output, weights
+
+<span class="cm"># ── Demo ─────────────────────────────────────────────────────</span>
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    np.random.seed(<span class="nm">42</span>)
+
+    <span class="cm"># Sentence: ["Humans", "love", "smartphones"]</span>
+    <span class="cm"># Each word → random embedding of dim 8</span>
+    seq_len, embed_dim = <span class="nm">3</span>, <span class="nm">8</span>
+    X = np.random.randn(seq_len, embed_dim)
+
+    attn = <span class="cls">SelfAttention</span>(embed_dim, d_k=<span class="nm">4</span>, d_v=<span class="nm">4</span>)
+    output, weights = attn.forward(X)
+
+    <span class="fn">print</span>(<span class="st">"Input shape :"</span>, X.shape)      <span class="cm"># (3, 8)</span>
+    <span class="fn">print</span>(<span class="st">"Output shape:"</span>, output.shape)  <span class="cm"># (3, 4)</span>
+    <span class="fn">print</span>(<span class="st">"\nAttention weights (row = word, col = attends to):"</span>)
+    <span class="fn">print</span>(np.round(weights, <span class="nm">3</span>))</code></pre>
+
+    <div class="callout">
+      <strong>Output:</strong> <code>weights[i][j]</code> tells you how much word <em>i</em> attends to word <em>j</em>. Each row sums to 1.0 after Softmax.
+    </div>
+  </div>
+
+  <!-- ─── 9. PyTorch Code ─────────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">09 — Code (PyTorch)</div>
+    <h2>Self-Attention in PyTorch</h2>
+    <p>The same mechanism with full gradient support for training via backpropagation:</p>
+
+    <pre><code><span class="code-label">Python · PyTorch</span><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+
+<span class="kw">class</span> <span class="cls">SelfAttention</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, embed_dim, d_k):
+        <span class="fn">super</span>().__init__()
+        <span class="cm"># Learnable projection layers (no bias for simplicity)</span>
+        self.Wq = nn.Linear(embed_dim, d_k, bias=<span class="kw">False</span>)
+        self.Wk = nn.Linear(embed_dim, d_k, bias=<span class="kw">False</span>)
+        self.Wv = nn.Linear(embed_dim, d_k, bias=<span class="kw">False</span>)
+        self.scale = d_k ** <span class="nm">0.5</span>
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, X):
+        <span class="cm">"""X: (batch, seq_len, embed_dim)"""</span>
+        Q = self.Wq(X)                            <span class="cm"># (B, seq, d_k)</span>
+        K = self.Wk(X)                            <span class="cm"># (B, seq, d_k)</span>
+        V = self.Wv(X)                            <span class="cm"># (B, seq, d_k)</span>
+
+        <span class="cm"># Attention scores</span>
+        scores = Q @ K.transpose(<span class="nm">-2</span>, <span class="nm">-1</span>) / self.scale   <span class="cm"># (B, seq, seq)</span>
+        weights = F.softmax(scores, dim=<span class="nm">-1</span>)              <span class="cm"># (B, seq, seq)</span>
+
+        output = weights @ V                      <span class="cm"># (B, seq, d_k)</span>
+        <span class="kw">return</span> output, weights
+
+<span class="cm"># ── Demo ─────────────────────────────────────────────────────</span>
+embed_dim, d_k = <span class="nm">16</span>, <span class="nm">8</span>
+batch_size, seq_len = <span class="nm">2</span>, <span class="nm">5</span>
+
+X = torch.randn(batch_size, seq_len, embed_dim)
+attn = <span class="cls">SelfAttention</span>(embed_dim, d_k)
+out, w = attn(X)
+
+<span class="fn">print</span>(<span class="st">f"Input : {X.shape}"</span>)   <span class="cm"># (2, 5, 16)</span>
+<span class="fn">print</span>(<span class="st">f"Output: {out.shape}"</span>)  <span class="cm"># (2, 5, 8)</span>
+<span class="fn">print</span>(<span class="st">f"Attn  : {w.shape}"</span>)    <span class="cm"># (2, 5, 5)</span>
+
+<span class="cm"># PyTorch also provides a built-in:</span>
+<span class="cm"># nn.MultiheadAttention(embed_dim, num_heads)</span></code></pre>
+  </div>
+
+  <!-- ─── 10. Summary ─────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-label">10 — Summary</div>
+    <h2>Key Takeaways</h2>
+    <p>Self-Attention is the engine that makes Transformers so powerful. Here's what to remember:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px;">
+      <div class="callout"><strong>1. Context matters.</strong> The same word can mean different things in different sentences — Self-Attention captures this.</div>
+      <div class="callout purple"><strong>2. Parallelism.</strong> Unlike RNNs, all positions are processed simultaneously — enabling massive speedups.</div>
+      <div class="callout pink"><strong>3. Three roles.</strong> Q, K, V separation allows each projection to be specialized and learned independently.</div>
+      <div class="callout green"><strong>4. Learnable.</strong> W<sub>q</sub>, W<sub>k</sub>, W<sub>v</sub> are trained end-to-end via backpropagation on task data.</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Self-Attention &amp; Transformer Architecture · Deep Learning Reference Guide
+</footer>
+
+</body>
+</html>
