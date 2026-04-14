@@ -1,0 +1,6 @@
+Attention is permutation-invariant — if you shuffle the words "cat sat the mat on", the attention scores are identical. 
+It has no built-in sense of order.
+Positional encoding fixes this by injecting a position signal directly into each token's 
+embedding before it enters the transformer.
+The core idea: add a unique vector to each token's embedding that encodes its position in the sequence. 
+The model can then learn to use position as a feature, just like semantic meaning.
