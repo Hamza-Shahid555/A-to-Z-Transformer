@@ -1,0 +1,27 @@
+What This Code Does — Short Explanation
+This code builds a Transformer Decoder from scratch using PyTorch, piece by piece.
+
+The Big Picture: A Transformer Decoder takes a target sequence (e.g., a sentence being translated)
+and generates the next token step by step — attending to both what it has already generated AND what the
+
+encoder understood from the input.
+
+The 7 Parts, Simply:
+1. scaled_dot_product_attention — The core math formula. It computes how much each token should "pay attention" 
+to other tokens using Query, Key, Value matrices. A mask blocks future tokens so the model can't "cheat."
+2. MultiHeadAttention — Runs the attention formula h times in parallel (multiple heads), each learning different 
+relationships, then combines them. Think of it as looking at the sentence from multiple perspectives at once.
+3. FeedForward — A simple two-layer neural network applied to each token position independently. It adds non-linearity
+and transforms the representations.
+4. PositionalEncoding — Since Transformers have no built-in sense of order, this injects position information using 
+sine/cosine waves so the model knows token 1 vs token 5 vs token 10.
+5. TransformerDecoderBlock — One full decoder layer combining all three sub-steps
+in sequence: self-attention → cross-attention → FFN, with residual connections and LayerNorm after each.
+6. TransformerDecoder — Stacks N decoder blocks on top of each other (like 6 or 12 layers), wraps them with an
+embedding layer at the start and a linear+softmax at the end to produce vocabulary probabilities.
+7. GPTStyleDecoder — A simplified decoder-only version (like GPT) — removes the cross-attention entirely since there's 
+no encoder. Just masked self-attention + FFN, repeated N times.
+
+Key Difference Between the Two Models:
+TransformerDecoderGPTStyleDecoderHas encoder input?✅ Yes (cross-attention)❌ NoUse caseTranslation, summarizationText 
+generation (GPT)Attention layers per block32
